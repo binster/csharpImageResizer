@@ -9,8 +9,11 @@ namespace Web_Services.Services
 {
     public class Image_Resizer : IImage_Resizer
     {
+
         public Image ResizeLargeImage(Image image, int width, int height)
         {
+            //if image dimensions exceeds the max width or height passed in the arguments, resize it, else return image
+
             if ((image.Width > width) || (image.Height > height))
             {
                 int originalHeight = image.Height;
@@ -23,22 +26,29 @@ namespace Web_Services.Services
 
                 double ratio = ratioX < ratioY ? ratioX : ratioY;
 
-                int newHeight = Convert.ToInt32(image.Height * ratio);
-                int newWidth = Convert.ToInt32(image.Width * ratio);
-                Bitmap newImage = new Bitmap(newWidth, newHeight);
+                int resizedWidth = Convert.ToInt32(image.Width * ratio);
+                int resizedHeight = Convert.ToInt32(image.Height * ratio);
 
-                newImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
+                //Create new Bitmap with correct proportions
 
-                using (var graphics = Graphics.FromImage(newImage))
+                Bitmap resizedImage = new Bitmap(resizedWidth, resizedHeight);
+
+                //To retain high quality of the picture, use Graphics Class to draw new image
+
+                resizedImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
+                using (var graphics = Graphics.FromImage(resizedImage))
                 {
                     graphics.CompositingMode = CompositingMode.SourceCopy;
                     graphics.CompositingQuality = CompositingQuality.HighQuality;
                     graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
                     graphics.SmoothingMode = SmoothingMode.HighQuality;
                     graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                    graphics.DrawImage(image, new Rectangle(0, 0, newWidth, newHeight), new Rectangle(0, 0, originalWidth, originalHeight), GraphicsUnit.Pixel);
+
+                    //Draw the image from the original image and dimensions to the new image with resized dimensions
+
+                    graphics.DrawImage(image, new Rectangle(0, 0, resizedWidth, resizedHeight), new Rectangle(0, 0, originalWidth, originalHeight), GraphicsUnit.Pixel);
                 }
-                return newImage;
+                return resizedImage;
             }
             else
             {
