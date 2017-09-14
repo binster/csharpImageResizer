@@ -33,7 +33,7 @@ namespace Web_Services.Services
 
                 Bitmap resizedImage = new Bitmap(resizedWidth, resizedHeight);
 
-                //To retain high quality of the picture, use Graphics Class to draw new image
+                //To retain high quality of the picture, use Graphics Method to draw new image
 
                 resizedImage.SetResolution(image.HorizontalResolution, image.VerticalResolution);
                 using (var graphics = Graphics.FromImage(resizedImage))
