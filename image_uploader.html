@@ -1,0 +1,447 @@
+﻿
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Image Resizer</title>
+    <!--Bootstrap CSS-->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+
+        div[drop-content] {
+            border: 2px dashed lightgray;
+            padding: 90px;
+            text-align: center;
+            font: 15px bold;
+            color: lightgrey;
+            margin: 10px;
+            font-family: Arial, Helvetica, sans-serif
+        }
+
+        .file-drop-drag {
+            border: 3px dashed lightgray !important;
+            font-size: 17px !important;
+        }
+
+        .submitButton {
+            margin: 10px;
+        }
+
+
+        .folderIcon {
+            font-size: 50px;
+        }
+
+        .filePreview {
+            margin: 10px !important;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        .invisibleFile {
+            opacity: 0.0;
+        }
+
+        .dropFilesText {
+            color: lightgray;
+        }
+
+        .selectList ul {
+            overflow-y: scroll !important;
+            height: 300px !important;
+        }
+
+        .uploadContainer {
+            padding: 20px;
+        }
+
+        .activeTab {
+            color: white !important;
+            background-color: #32c5d2 !important;
+            border-color: #32c5d2 !important;
+        }
+
+        .uploadContainer {
+            background-color: white;
+        }
+
+        .contentQuickInfo {
+            color: white;
+            background-color: #333;
+            padding: 5px;
+            margin-left: 0px !important;
+            margin-right: 0px !important;
+        }
+
+        .uploadingFileStatus {
+            opacity: .3;
+            position: relative;
+        }
+
+        .smallSpinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+        }
+    </style>
+</head>
+<body prevent-drag-reload>
+    <div ng-app="resizerApp">
+        <h1>Resize Image</h1>
+        <div ng-controller="resizeController as rc">
+            <div class="container col-sm-12">
+                <div class="col-sm-4">
+                    <div drop-content files-to-upload="rc.files" drop-status="rc.loadedFilesStatus" onClick="document.getElementById('uploadManual').click()">
+                        <div class="form-group">
+                            <h5 class="dropFilesText">Drop Files Here</h5>
+                            <div class="glyphicon glyphicon-folder-open folderIcon"></div>
+                            <input type="file" id="uploadManual" class="form-control-file invisibleFile" aria-describedby="fileUpload" content-reader="rc.files" multiple>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="button" ng-if="rc.files.length>0"class="btn btn-danger btn-ico btn-lg col-sm-8 col-sm-offset-2" ng-click="rc.unstageAllFiles()">Remove All</button>
+                    </div>
+                </div>
+                <div class="row col-sm-8">
+                    <!--file thumbnails-->
+                    <div ng-repeat="file in rc.files">
+                        <div class="filePreview row col-sm-12">
+                            <div class="col-sm-4">
+                                <div>
+                                    <i ng-if="rc.fileUploadedStatus" class="fa fa-circle-o-notch fa-spin fa-3x fa-fw smallSpinner"></i>
+                                    <img ng-src="{{file.preview}}" class="img-responsive" ng-class="{uploadingFileStatus: rc.fileUploadedStatus}" />
+                                </div>
+                                <div class="contentQuickInfo col-sm-12 row">
+                                    <div class="col-sm-4 col-sm-offset-1">{{file.size/1024 | number:2}}KB</div>
+                                    <div class="col-sm-4 pull-right">
+                                        <button class="btn btn-danger glyphicon glyphicon-remove pull-right" ng-click="rc.removeContent($index)"></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <hr class="col-md-12 breakLine" />
+                    </div>
+                    <!--end file thumbnails-->
+                </div>
+
+                <div>
+                </div>
+            </div>
+            <div class="col-sm-12">
+                <button type="button" ng-if="rc.files.length> 0" class="btn btn-primary btn-lg submitButton pull-right" ng-click="rc.uploadContent(); $event.stopPropogation();">Upload</button>
+            </div>
+        </div>      
+    </div>
+
+
+    <!--JQuery-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <!--Boostrap JS-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <!--AngularJS-->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.6.5/angular.min.js"></script>
+
+    <!-- All your code goes below here-->
+    <script type="text/javascript">
+
+        //instantiate app
+        (function () {
+            angular.module("resizerApp", []);
+        })();
+
+        //resizeController
+        (function () {
+            "use strict";
+            angular.module("resizerApp")
+                .controller("resizeController", resizeController);
+
+            resizeController.$inject = ["uploadService"];
+
+            function resizeController(uploadService) {
+
+                //admin
+                var vm = this;
+
+                //view model
+                vm.files = [];
+                vm.loadedFilesStatus = true;
+                vm.fileUploadedStatus = false;
+                vm.uploadContent = _uploadContent;
+                vm.removeContent = _removeContent;
+                vm.unstageAllFiles = _unstageAllFiles;
+
+                //fold
+
+                function _setTab(tabNumber) {
+                    vm.tab = tabNumber;
+                    _resetEverything();
+                }
+
+                function _activeTab(tabNumber) {
+                    return vm.tab === tabNumber;
+                }
+
+                function _uploadContent() {                   
+                        if (vm.files.length > 0) {
+                            _uploadMultiPartFormData(vm.files);
+                        } 
+                }
+
+                function _getExtension(url) {
+                    var extension = url.substring(url.lastIndexOf(".") + 1);
+                    return extension;
+                }
+
+                function _onUploadLinkSuccess(response) {
+                    console.log(response);
+                    logService.logLinkUploaded(response.data.item)
+                    alertService.success("", "Upload Success");
+                    _resetEverything();
+                }
+
+                function _onUploadVideoSuccess(response) {
+                    console.log(response);
+                    logService.logVideoUploaded(response.data.item)
+                    alertService.success("", "Upload Success");
+                    _resetEverything();
+                }
+
+                function _onUploadLinkFail(response) {
+                    alertService.error("There was a problem uploading your file", "Error");
+                }
+
+                function _resetEverything() {
+                    vm.files = [];
+                }
+
+                function _removeContent(index) {
+                    var files = [];
+                    angular.forEach(vm.files, function (file, key) {
+                        if (index != key) {
+                            files.push(file);
+                        }
+                        vm.files = files;
+                    });
+                }
+
+                function _uploadMultiPartFormData(contentList) {
+                    vm.fileUploadedStatus = true;
+                    for (var i = 0; i < contentList.length; i++) {
+                            var formData = new FormData();
+                            var content = contentList[i];
+                            formData.append("File", content.content);
+                            uploadService.postMultiPartFormData(formData).then(_postFormDataSuccess, _postFormDataError);
+                    }
+                }
+
+                function _postFormDataSuccess(response) {
+                    console.log(response);
+                    vm.fileUploadedStatus = false;
+                    _resetEverything();
+                }
+
+                function _postFormDataError(response) {
+                    console.log(response);
+                    vm.fileUploadedStatus = false;
+                }
+            }
+        })();
+
+        //directive for the manual file upload
+        (function () {
+            "use strict";
+            angular.module("resizerApp")
+                .directive("contentReader", contentReader);
+
+            function contentReader() {
+                return {
+                    restrict: "A",
+                    scope: {
+                        contentReader: "="
+                    },
+                    link: function (scope, elem, attr) {
+
+                        elem.bind("change", function () {
+                            angular.forEach(elem[0].files, function (file) {
+                                scope.$apply(function () {
+                                    var newFilePreview = URL.createObjectURL(file);
+                                    var newFileName = file.name;
+                                    var newFileType = file.type;
+                                    var newFileSize = file.size;
+                                    var fileObject = {
+                                        content: file,
+                                        contentType: newFileType,
+                                        name: newFileName,
+                                        size: newFileSize,
+                                        preview: newFilePreview
+                                    };
+                                    console.log(fileObject);
+                                    scope.contentReader.push(fileObject);
+                                });
+
+                            });
+                        });
+                    }
+                };
+            }
+        })();
+
+        //directive to allow user to drag and drop a file onto the DOM
+        (function () {
+            "use strict";
+            angular.module("resizerApp")
+                .directive("dropContent", dropContent);
+
+            dropContent.$inject = ["$q"];
+
+            function dropContent($q) {
+                return {
+                    restrict: "A",
+                    scope: {
+                        filesToUpload: "=",
+                        dropStatus: "="
+                    },
+                    link: function (scope, elem, attr) {
+
+                        elem.bind("dragover", function (event) {
+                            if (event != null) {
+                                event.preventDefault();
+                            }
+                            event.originalEvent.dataTransfer.effectAllowed = "copy";
+                            elem.addClass("file-drop-drag");
+                        });
+
+                        elem.bind("dragenter", function (event) {
+                            if (event != null) {
+                                event.preventDefault();
+                            }
+                            event.originalEvent.dataTransfer.effectAllowed = "copy";
+                            elem.addClass("file-drop-drag");
+                        });
+
+                        elem.bind("dragleave", function (event) {
+                            if (event != null) {
+                                event.preventDefault();
+                            }
+                            event.originalEvent.dataTransfer.effectAllowed = "copy";
+                            elem.removeClass("file-drop-drag");
+                        });
+
+                        //when user drops file, prevent page from reload, read content, allow digest cycle to see content in scope
+                        elem.bind("drop", function (event) {
+                            if (event != null) {
+                                event.preventDefault();
+                            }
+
+                            scope.$apply(function () {
+                                scope.dropStatus = false;
+                            });
+
+                            //loop through each file, use FileReader to create file objects
+                            var promises = [];
+                            angular.forEach(event.originalEvent.dataTransfer.files, function (file) {
+                                var reader = new FileReader();
+                                //reader begins for each dropped file
+                                var promise = $q(function (resolve, reject) {
+
+
+                                    reader.onload = function (e) {
+                                        //$apply tells digest cycle to integrate changes to the scope
+                                        scope.$apply(function () {
+                                            var newFilePreview = URL.createObjectURL(file);
+                                            var newFileName = file.name;
+                                            var newFileType = file.type;
+                                            var newFileSize = file.size;
+
+                                            var fileObject = {
+                                                content: file,
+                                                contentType: newFileType,
+                                                name: newFileName,
+                                                size: newFileSize,
+                                                preview: newFilePreview
+                                            };
+                                            console.log(file);
+                                            scope.filesToUpload.push(fileObject);
+                                        });
+                                    };
+                                    resolve();
+                                });
+                                promises.push(promise);
+                                reader.readAsDataURL(file);
+                            });
+                            $q.all(promises).then(function () {
+                                scope.dropStatus = true;
+                            });
+                        });
+                    }
+                };
+            }
+        })();
+
+        
+        //directive to prevent default on body for drag-drop
+        (function () {
+            "use strict";
+            angular.module("resizerApp")
+                .directive("preventDragReload", preventDragReload);
+
+            function preventDragReload() {
+                return {
+                    restrict: "A",
+                    link: function (scope, elem, attr) {
+
+                        elem.bind("dragover", function (event) {
+                            event.preventDefault();
+                            return false;
+                        });
+
+                        elem.bind("drop", function (event) {
+                            event.preventDefault();
+                            return false;
+                        });
+                    }
+                };
+            }
+        })();
+
+        //upload service
+        (function () {
+            angular.module("resizerApp")
+                .service("uploadService", uploadService);
+
+            uploadService.$inject = ["$http"];
+
+            function uploadService($http) {
+
+                //service properties
+                this.postMultiPartFormData = _postMultiPartFormData;
+
+                //service functions
+
+                function _postMultiPartFormData(formData) {
+                    settings = {
+                        url: "apiEndpoint",
+                        method: "POST",
+                        data: formData,
+                        transformRequest: angular.identity,
+                        headers: {
+                            "Content-Type": undefined
+                        },
+                        cache: false
+
+                    };
+                    return $http(settings);
+                }
+            }
+
+        })();
+    </script>
+
+</body>
+</html>
+
+
+
+
