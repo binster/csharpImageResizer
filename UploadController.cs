@@ -8,7 +8,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
 
-namespace Sabio.Web.Controllers.Api
+namespace Web.Controllers.Api
 {
     [RoutePrefix("api/resizer")]
     public class UploadController : ApiController
